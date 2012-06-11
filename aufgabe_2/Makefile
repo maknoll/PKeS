@@ -28,6 +28,9 @@ program: all
 	@echo "Programing the device"
 	$(AVRDUDE) $(AVRDUDE_FLAGS)
 
+terminal: all
+	$(AVRDUDE) -P/dev/cu.SLAB_USBtoUART -b 19200 -c $(STK) -p $(CTRL) -t
+
 asm:	all
 	@echo "Generating assembler code"
 	avr-objdump -S $(TARGET).elf >  $(TARGET).asm

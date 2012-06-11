@@ -26,7 +26,7 @@ void init()
 	PORTA &= ~((1<<LED_0) | (1<<LED_1) | (1<<LED_2) | (1<<LED_3));
 
 	ADMUX = (1<<REFS1) | (1<<REFS0);
-	ADCSRA = (1<<ADPS0) | (1<<ADPS1) | (1<<ADPS2); //TF=128
+	ADCSRA = (1<<ADPS0) | (1<<ADPS1) | (1<<ADPS2);
 	ADCSRA |= (1<<ADEN);
 
 	ADCSRA |= (1<<ADSC);
@@ -37,12 +37,10 @@ void init()
 	ADCSRA |= (1<<ADIE);
 }
 
-/* ADC Einzelmessung */
 void ADC_Read(uint8_t channel)
 {
-	// Kanal waehlen, ohne andere Bits zu beeinflußen
 	ADMUX = (ADMUX & ~(0x1F)) | (channel & 0x1F);
-	ADCSRA |= (1<<ADSC);            // eine Wandlung "single conversion"
+	ADCSRA |= (1<<ADSC);
 }
 
 void display(unsigned char number)
@@ -54,7 +52,6 @@ void display(unsigned char number)
 	while(number)
 		PORTA |= (1 << (number-- - 1));
 }
-
 
 int main(void)
 {
