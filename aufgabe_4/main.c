@@ -20,35 +20,6 @@
 #define BUTTON_2 6
 #define BUTTON_3 7
 
-uint8_t sensor = 0;
-uint16_t sensor_data[] = {0x00, 0x00, 0x00, 0x00};
-
-void adc_init()
-{
-	/* internal reference voltage */
-	ADMUX = (1<<REFS1) | (1<<REFS0);
-
-	/* prescaler 128 */
-	ADCSRA = (1<<ADPS0) | (1<<ADPS1) | (1<<ADPS2);
-
-	/* enable adc */
-	ADCSRA |= (1<<ADEN);
-
-	/* start dummy conversion */
-	ADCSRA |= (1<<ADSC);
-	while(ADCSRA & (1<<ADSC));
-	uint16_t dummy = ADCW;
-
-	/* enable adc interrupt */
-	ADCSRA |= (1<<ADIE);
-}
-
-void adc_read(uint8_t channel)
-{
-	ADMUX = (ADMUX & ~(0x1F)) | (channel & 0x1F);
-	ADCSRA |= (1<<ADSC);
-}
-
 #define MOTOR_STOP 0x00
 #define MOTOR_FORWARD 0x42
 #define MOTOR_BACK 0x81
@@ -90,42 +61,88 @@ void init()
 	DDRA |= ((1<<LED_0) | (1<<LED_1) | (1<<LED_2) | (1<<LED_3));
 	PORTA &= ~((1<<LED_0) | (1<<LED_1) | (1<<LED_2) | (1<<LED_3));
 
-	TCCR0A = (1<<CS00) | (1<<CS02);
-	TIMSK0 |= (1<<TOIE0);
+	EIMSK |= (1<<INT2) | (1<<INT3);
 }
+
+#define STATE_0 0
+#define STATE_1 1
+#define STATE_2 2
+#define STATE_3 3
+volatile int state = STATE_0;
+
+#define DISTANCE_1 100
+#define DISTANCE_2 200
+#define DISTANCE_3 300
+
+volatile int counter = 0;
 
 int main()
 {
 	init();
-	adc_init();
 	pwm_init();
 	motor_init();
 	sei();
 
-	adc_read(0);
+	while(1)
+	{
+		switch(state)
+		{
+			case STATE_0:
+				if(button(1))
+				{
+					motor(MOTOR_FORWARD);
+					state = STATE_1;
+				}
+				else if(button(2))
+				{
+					motor(MOTOR_FORWARD);
+					state = STATE_2;
+				}
+				else if(button(3))
+				{
+					motor(MOTOR_FORWARD);
+					state = STATE_3;
+				}
+				break;
 
-	while(1);
+			case STATE_1:
+				if(counter >= DISTANCE_1)
+				{
+					motor(MOTOR_STOP);
+					counter = 0;
+					state = STATE_0;
+				}
+				break;
+
+			case STATE_2:
+				if(counter >= DISTANCE_2)
+				{
+					motor(MOTOR_STOP);
+					counter = 0;
+					state = STATE_0;
+				}
+				break;
+
+			case STATE_3:
+				if(counter >= DISTANCE_3)
+				{
+					motor(MOTOR_STOP);
+					counter = 0;
+					state = STATE_0;
+				}
+				break;
+		}
+	}
 
 	return 0;
 }
 
-#define WERT 500
-
-ISR(TIMER0_OVF_vect)
+ISR(INT2_vect)
 {
-	if(sensor_data[1] > WERT && sensor_data[0] < WERT)
-		motor(MOTOR_RIGHT);
-	else if(sensor_data[1] < WERT && sensor_data[0] > WERT)
-		motor(MOTOR_LEFT);
-	else if(sensor_data[1] < WERT && sensor_data[0] < WERT)
-		motor(MOTOR_FORWARD);
-	else
-		motor(MOTOR_RIGHT);
+	counter++;
 }
 
-ISR(ADC_vect)
+ISR(INT3_vect)
 {
-	sensor_data[sensor] = ADCW;
-	sensor = (sensor + 1) & 0x03;
-	adc_read(sensor);
+	// evtl. für Richtungskorrektur
 }
